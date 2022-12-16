@@ -1,0 +1,34 @@
+name: build-dpdk-docset
+on:
+  workflow_dispatch:
+    inputs:
+      dpdk_rev:
+        description: 'DPDK revision'
+        default: 'releases'
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Checkout DPDK repo
+        uses: actions/checkout@v3
+        with:
+          repository: DPDK/dpdk
+          ref: ${{ inputs.dpdk_rev }}
+      - name: install doxygeb2docset
+        run: sudo apt-get install -y ./doxygen2docset.deb
+      - name: Build DPDK docs
+        run: meson build && cd build && ninja doc
+      - name: Build Dash docset
+        run: cat doxy-api.conf >> doc/api/doxy-api.conf && doxygen2docset --doxygen doc/api/api --docset /tmp/dpdk.docset
+      - name: Set icon
+        run: cp icon.png /tmp/dpdk.docset/
+      - name: Compress
+        run: tar -czf /tmp/dpdk.tgz /tmp/dpdk.docset
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          path: /tmp/dpdk.tgz
